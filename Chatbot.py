@@ -1,51 +1,52 @@
 import os
-import time
+import gradio as gr
 from google import genai
 
-def main():
-    # Get API key from environment variable
-    api_key = os.getenv("GEMINI_API_KEY")
+# API client
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-    # Check if API key is set in device
-    if not api_key:
-        print("Error: GEMINI_API_KEY is not set.")
-        return
+# System persona
+SYSTEM_PERSONALITY = "You are Shakespeare. Speak in poetic, old-English style."
 
-    # Create a Gemini Client
-    client = genai.Client(api_key=api_key)
+# Conversation memory
+history = []
 
-    print("Gemini Chatbot ready. Type 'quit' to exit.\n")
+def chat(user_message):
+    global history
 
-    # Start Loop
-    while True:
-        # Error-Handling
-        try:   
-            # Remove extra whitespaces from user input
-            user_input = input("You: ").strip()
+    # Check for bad input
+    if not user_message.strip():
+        return "Please enter a message."
 
-            # Check if user wants to quit
-            if user_input.lower() == "quit":
-                print("Goodbye!")
-                break
-            
-            # Check if user entered nothing
-            if not user_input:
-                print("Please enter a message.")
-                continue
-            
-            # If neither condition is fulfilled, then get response from Gemini
-            response = client.models.generate_content(
-                model="gemini-2.5-flash-lite",
-                contents=user_input
-            )
-            time.sleep(1)
+    # Add user message to memory
+    history.append(f"User: {user_message}")
 
-            print("Gemini:", response.text)
+    try:
+        prompt = SYSTEM_PERSONALITY + "\n\n" + "\n".join(history)
 
-        except Exception as e:
-            print("Error:", str(e))
-            print("Try again.\n")
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=prompt
+        )
+
+        reply = response.text
+
+        # Add Gemini response to memory
+        history.append(f"Gemini: {reply}")
+
+        return reply
+
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
-if __name__ == "__main__":
-    main()
+# Gradio UI
+interface = gr.Interface(
+    fn=chat,
+    inputs="text",
+    outputs="text",
+    title="Gemini Chatbot",
+    description="Chat with Gemini"
+)
+
+interface.launch()
