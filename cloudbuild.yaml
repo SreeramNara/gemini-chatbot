@@ -1,0 +1,32 @@
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t',
+      'northamerica-northeast1-docker.pkg.dev/gemini-chatbot-494821/chatbot-repo/chatbot-app',
+      '.'
+    ]
+
+  # Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'push',
+      'northamerica-northeast1-docker.pkg.dev/gemini-chatbot-494821/chatbot-repo/chatbot-app'
+    ]
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run', 'deploy', 'chatbot-service',
+      '--image', 'northamerica-northeast1-docker.pkg.dev/gemini-chatbot-494821/chatbot-repo/chatbot-app',
+      '--region', 'northamerica-northeast1',
+      '--platform', 'managed',
+      '--allow-unauthenticated',
+      '--port', '8080',
+      '--set-secrets', 'GEMINI_API_KEY=gemini-api-key:latest'
+    ]
+
+images:
+  - 'northamerica-northeast1-docker.pkg.dev/gemini-chatbot-494821/chatbot-repo/chatbot-app'
