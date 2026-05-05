@@ -1,0 +1,276 @@
+# Cloud Run Overview
+
+Cloud Run is a fully managed application platform for running code, functions, or containers on Google's scalable infrastructure.
+
+You can deploy code written in any programming language as long as it can run inside a container. Cloud Run also supports source-based deployments for languages like Go, Node.js, Python, Java, .NET, and Ruby, automatically building containers for you.
+
+Cloud Run allows developers to focus on writing code instead of managing infrastructure.
+
+---
+
+## Resource Types
+
+Cloud Run supports three main resource types:
+
+### Service
+
+Responds to HTTP requests using stateless containers that automatically scale.
+
+### Job
+
+Executes tasks that run to completion, either manually or on a schedule.
+
+### Worker Pool
+
+Runs continuous background workloads that do not rely on HTTP requests.
+
+---
+
+## Cloud Run Services
+
+A Cloud Run service provides a managed HTTPS endpoint. Your application must listen on a TCP port and handle HTTP requests.
+
+### Key Features
+
+* Unique HTTPS endpoint for each service
+* Supports custom domains
+* Built-in TLS management
+* Supports WebSockets, HTTP/2, and gRPC
+
+---
+
+## Scaling
+
+Cloud Run automatically scales instances based on incoming traffic or CPU usage.
+
+### Automatic Scaling
+
+Cloud Run increases instances when demand rises and reduces them when demand falls.
+
+A service can scale to thousands of instances if needed.
+
+### Scale to Zero
+
+If there are no incoming requests, Cloud Run removes all instances.
+
+When a new request arrives, a new instance is created. This may cause a delay known as a cold start.
+
+### Minimum Instances
+
+You can configure a minimum number of instances to stay running.
+
+This reduces cold starts and improves response time.
+
+To configure minimum instances:
+
+* Use the gcloud CLI
+* Use the Google Cloud Console
+
+### Maximum Instances
+
+You can limit the number of instances to control cost or protect downstream systems.
+
+### Manual Scaling
+
+You can override automatic scaling and manually control the number of instances.
+
+---
+
+## Traffic Management
+
+Cloud Run allows gradual rollouts and safe deployments.
+
+You can:
+
+* Route traffic to new revisions
+* Roll back to previous versions
+* Split traffic across multiple revisions
+
+Example:
+Start with 1% of traffic to a new revision and increase gradually.
+
+---
+
+## Access Control
+
+Cloud Run services can be public or private.
+
+You can restrict access using:
+
+* Cloud IAM policies
+* Ingress settings (e.g., internal traffic only)
+* Identity-Aware Proxy (IAP)
+
+You can also use a CDN such as Cloud CDN or Firebase Hosting to serve content closer to users.
+
+---
+
+## Billing
+
+Cloud Run uses a pay-per-use model.
+
+### Request-based Billing
+
+You are charged only when handling requests.
+
+### Instance-based Billing
+
+You are charged for the entire lifetime of an instance.
+
+There is also a free tier available.
+
+---
+
+## Container Behavior
+
+Cloud Run instances are disposable.
+
+Each container has a temporary in-memory file system that is deleted when the instance stops.
+
+To handle shutdowns properly:
+
+* Listen for the SIGTERM signal
+* Save important data externally
+
+To persist data:
+
+* Use Cloud Storage
+* Use a mounted network file system (NFS)
+
+---
+
+## Use Cases for Services
+
+Cloud Run services are ideal for:
+
+### Web Applications
+
+Serve dynamic websites and connect to databases.
+
+### APIs and Microservices
+
+Build REST or GraphQL APIs.
+
+### Streaming Processing
+
+Handle events from Pub/Sub or Eventarc.
+
+### Asynchronous Workloads
+
+Respond to background events.
+
+### AI Inference
+
+Run machine learning models with or without GPUs.
+
+---
+
+## Cloud Run Jobs
+
+Cloud Run jobs are designed for tasks that run and then stop.
+
+You can run jobs:
+
+* Manually
+* On a schedule
+* As part of workflows
+
+### Array Jobs
+
+Run multiple instances in parallel for faster processing.
+
+### Use Cases
+
+* Database migrations
+* Batch processing
+* Scheduled tasks (e.g., sending invoices)
+* AI batch workloads
+
+---
+
+## Cloud Run Worker Pools
+
+Worker pools are designed for continuous, non-HTTP workloads.
+
+### Characteristics
+
+* Do not auto-scale automatically
+* Must manually set instance count
+* No public endpoint
+* Support VPC networking
+
+### Scaling Behavior
+
+To adjust dynamically, you must build your own autoscaler.
+
+### Rollouts
+
+Worker pools split instances between revisions instead of traffic.
+
+### Use Cases
+
+* Kafka consumers
+* Pub/Sub pull processing
+* RabbitMQ workers
+* General background processing
+
+---
+
+## Google Cloud Integrations
+
+Cloud Run integrates with many Google Cloud services.
+
+### Data Storage
+
+* Cloud SQL
+* Firestore
+* Spanner
+* Cloud Storage
+* Memorystore
+
+### Logging and Monitoring
+
+* Cloud Logging
+* Error Reporting
+
+### Authentication
+
+* Uses service accounts automatically
+
+### CI/CD
+
+* Deploy automatically from GitHub
+
+### Networking
+
+* Connect to VPC using Serverless VPC Access
+
+### APIs
+
+* Access Google Cloud APIs including AI services
+
+### Background Tasks
+
+* Use Cloud Tasks for async execution
+
+---
+
+## Container Model
+
+All Cloud Run applications run inside containers.
+
+A container includes:
+
+* Code
+* Dependencies
+* Runtime
+* System libraries
+
+Containers are portable and can run anywhere.
+
+Cloud Run does not restrict what binaries you can run.
+
+### Build Options
+
+* Build your own container
+* Use Google Cloud buildpacks for automatic containerization

@@ -1,0 +1,336 @@
+# Cloud Run Quickstart: Deploy a Container
+
+This guide explains how to deploy a container to Cloud Run.
+
+---
+
+## Prerequisites
+
+Before deploying, ensure the following:
+
+* You have a Google Cloud account
+* A Google Cloud project is selected or created
+* Billing is enabled for the project
+
+### Required IAM Roles
+
+You need the following roles:
+
+* Cloud Run Admin (`roles/run.admin`)
+* Service Account User (`roles/iam.serviceAccountUser`)
+* Logs Viewer (`roles/logging.viewer`)
+
+---
+
+## Deploy a Container
+
+Follow these steps to deploy a container using the Google Cloud Console.
+
+### Step 1: Open Cloud Run
+
+Go to the Cloud Run page in the Google Cloud Console.
+
+---
+
+### Step 2: Create a Service
+
+* Click **Deploy container**
+* Select **Deploy one revision from an existing container image**
+
+---
+
+### Step 3: Choose a Container
+
+* In **Container image URL**, click **Test with a sample container**
+
+---
+
+### Step 4: Configure the Service
+
+* Enter a **service name** (or use default)
+* Select a **region** (e.g., `us-central1`)
+* Under **Authentication**, select:
+
+  * **Allow public access**
+
+---
+
+### Step 5: Deploy
+
+* Click **Create**
+* Wait for deployment to complete
+
+Once finished:
+
+* A service URL will be generated
+
+---
+
+### Step 6: Test the Service
+
+* Copy the service URL
+* Open it in your browser
+
+If successful, your container is running and serving requests.
+
+---
+
+## Deployment Behavior
+
+* Cloud Run automatically scales based on demand
+* You are billed only for:
+
+  * CPU usage
+  * Memory usage
+  * Network usage during requests
+
+---
+
+## Access Restrictions
+
+If your project restricts unauthenticated access:
+
+* You must follow steps for testing private services
+* Public access may not work unless policies are adjusted
+
+---
+
+## Cleanup
+
+To avoid charges, delete resources after use.
+
+---
+
+### Delete Cloud Run Service
+
+1. Go to the Cloud Run Services page
+2. Select your service
+3. Click **Delete**
+
+This removes all revisions.
+
+---
+
+### Delete Container Images
+
+Even if your service is idle, stored images may incur costs.
+
+To delete:
+
+* Remove repositories from Artifact Registry
+
+---
+
+### Delete Project (Optional)
+
+To remove all resources:
+
+1. Go to **Manage resources**
+2. Select your project
+3. Click **Delete**
+4. Enter project ID and confirm
+
+⚠️ Warning:
+
+* This deletes ALL resources in the project
+* Project IDs cannot be reused
+
+---
+
+## Summary
+
+You deployed a container to Cloud Run by:
+
+* Creating a service
+* Selecting a container image
+* Configuring access and region
+* Deploying and testing the service
+
+Cloud Run handles scaling and infrastructure automatically.
+
+
+## Deployment Methods
+
+Cloud Run supports multiple ways to deploy applications. Each method targets a different workflow.
+
+---
+
+### Deploy from a Container Image
+
+You can deploy a pre-built container image.
+
+Steps:
+
+1. Go to Cloud Run
+2. Click **Deploy container**
+3. Select an existing container image
+4. Configure service settings (name, region, authentication)
+5. Click **Create**
+
+Use this when:
+
+* You already built a container
+* You want full control over the runtime
+
+---
+
+### Deploy from Source Code
+
+Cloud Run can build and deploy your source code automatically.
+
+* Uses Cloud Build
+* Creates a container image for you
+* Stores the image in Artifact Registry
+
+Use this when:
+
+* You don’t want to manage containers manually
+* You’re using supported runtimes (Node.js, Python, etc.)
+
+---
+
+### Deploy from a Git Repository (Continuous Deployment)
+
+You can connect a Git repository and automatically deploy on commits.
+
+#### Setup
+
+1. Go to Cloud Run
+2. Click **Connect repo**
+3. Set up Cloud Build
+4. Select your repository
+5. Choose **Google Cloud Buildpacks**
+6. Save configuration
+
+#### Deploy
+
+1. Confirm service name and region
+2. Allow public access (if desired)
+3. Click **Create**
+
+#### Updating the Service
+
+* Push a commit to the main branch
+* Cloud Run automatically redeploys
+
+Use this when:
+
+* You want CI/CD
+* You deploy frequently
+
+---
+
+### Deploy a Cloud Run Function (Console)
+
+Cloud Run supports deploying event-driven or HTTP functions.
+
+#### Steps
+
+1. Go to Cloud Run
+2. Click **Write a function**
+3. Enter a service name
+4. Select runtime and region
+5. Allow public access (optional)
+6. Click **Create**
+7. Edit source code and redeploy
+
+Use this when:
+
+* You want simple function-based apps
+* You don’t want to manage containers
+
+---
+
+### Deploy a Cloud Run Function (gcloud CLI)
+
+You can deploy functions using the CLI.
+
+#### Example Command
+
+```bash
+gcloud run deploy SERVICE_NAME \
+  --source . \
+  --function FUNCTION_NAME \
+  --base-image RUNTIME \
+  --region REGION \
+  --allow-unauthenticated
+```
+
+#### Steps
+
+1. Initialize gcloud:
+
+   ```bash
+   gcloud init
+   ```
+
+2. Enable required APIs:
+
+   ```bash
+   gcloud services enable \
+     artifactregistry.googleapis.com \
+     cloudbuild.googleapis.com \
+     run.googleapis.com \
+     logging.googleapis.com
+   ```
+
+3. Deploy using the command above
+
+Use this when:
+
+* You prefer CLI workflows
+* You want automation/scripts
+
+---
+
+### Deploy a Worker Pool
+
+Worker pools run background workloads (non-HTTP).
+
+#### Steps
+
+1. Go to Cloud Run
+2. Select **Worker pools**
+3. Click **Deploy container**
+4. Choose a container image
+5. Click **Create**
+
+After deployment:
+
+* The worker pool runs continuously
+* Logs can be viewed in the Logs tab
+
+Use this when:
+
+* You need background processing
+* Your app doesn’t serve HTTP requests
+
+---
+
+## Deployment Behavior
+
+* Cloud Run automatically scales based on demand
+* You are billed only for:
+
+  * CPU
+  * Memory
+  * Networking during execution
+
+---
+
+## Summary
+
+Cloud Run deployment options include:
+
+* Container-based deployment
+* Source-based deployment
+* Git-based continuous deployment
+* Function deployment (console or CLI)
+* Worker pool deployment
+
+Choose the method based on your workflow:
+
+* Simplicity → functions or source deploy
+* Control → container deploy
+* Automation → Git-based deployment
+* Background work → worker pools

@@ -1,0 +1,232 @@
+# Cloud Run Deployment Options and Resource Model
+
+This document explains the available deployment methods and core resource types in Cloud Run.
+
+---
+
+## Deployment Options
+
+Cloud Run supports multiple ways to deploy applications. All deployments run as sandboxed container instances on fully managed infrastructure.
+
+---
+
+### Deploy Container Images
+
+You can deploy any container image that follows the Cloud Run container runtime contract.
+
+Supported targets:
+
+* Cloud Run services
+* Cloud Run jobs
+* Cloud Run worker pools
+
+---
+
+### Deploy from Source Code
+
+Cloud Run can build and deploy source code directly.
+
+* Cloud Build automatically converts source code into a container image
+* The image is stored in Artifact Registry
+
+Supported:
+
+* Projects with a Dockerfile
+* Projects using supported runtimes (e.g., Python, Node.js, Java)
+
+---
+
+### Functions
+
+Cloud Run supports deploying event-driven functions.
+
+* Functions execute in response to events
+* You only provide function code
+* Cloud Run handles containerization automatically
+
+Deploying a function creates a **Cloud Run service**.
+
+---
+
+### Continuous Deployment from Git
+
+Cloud Run supports continuous deployment from Git repositories.
+
+* Automatically deploy on new commits
+* Works with:
+
+  * Dockerfile-based apps
+  * Supported language runtimes
+
+Applies to:
+
+* Services (native support)
+* Jobs (via Cloud Build configuration)
+
+---
+
+## Cloud Run Services
+
+Services are the primary resource for handling HTTP requests.
+
+### Key Characteristics
+
+* Each service runs in a specific region
+* Automatically replicated across zones for reliability
+* Exposes a unique HTTPS endpoint
+* Automatically scales based on incoming requests
+
+---
+
+### Service Deployment Sources
+
+A service can be deployed from:
+
+* Container image
+* Source code
+* Repository
+
+---
+
+## Service Revisions
+
+Each deployment creates a new revision.
+
+A revision includes:
+
+* Container image(s)
+* Configuration settings:
+
+  * Environment variables
+  * Memory limits
+  * Concurrency settings
+
+### Important Rules
+
+* Revisions are immutable (cannot be modified after creation)
+* Any change creates a new revision
+* Old revisions are automatically cleaned up over time
+
+---
+
+### Traffic Routing
+
+Cloud Run automatically routes traffic to the latest healthy revision.
+
+You can also:
+
+* Split traffic across revisions
+* Roll back to previous revisions
+
+---
+
+## Service Instances
+
+Cloud Run automatically scales instances for each revision.
+
+### Behavior
+
+* Instances are created based on request load
+* One instance can handle multiple requests simultaneously
+
+### Concurrency
+
+* You can configure how many requests each instance handles at once
+* This is controlled by the **request concurrency setting**
+
+---
+
+## Cloud Run Jobs
+
+Jobs are used for workloads that run to completion.
+
+### Characteristics
+
+* Run in a specific region
+* Consist of one or more tasks
+* Tasks can run in parallel
+
+---
+
+## Job Executions
+
+When a job runs, a job execution is created.
+
+### Behavior
+
+* All tasks start together
+* All tasks must succeed for the job to succeed
+
+### Failure Handling
+
+* Tasks can retry on failure
+* If retries are exceeded, the job fails
+
+### Parallelism
+
+* By default, up to 100 tasks run in parallel
+* You can lower this limit if needed
+
+---
+
+## Job Tasks
+
+Each job execution includes multiple tasks.
+
+* Each task runs one container instance
+* Failed tasks may be retried based on configuration
+
+---
+
+## Cloud Run Worker Pools
+
+Worker pools are designed for non-HTTP workloads.
+
+---
+
+### Key Characteristics
+
+* No public endpoint or URL
+* No requirement to listen on a port
+* No automatic scaling
+
+---
+
+### Scaling
+
+* Must be scaled manually
+* You can build a custom autoscaler if needed
+
+Example:
+
+* Kafka-based autoscaling systems
+
+---
+
+### Revisions
+
+Like services, updating a worker pool creates a new revision.
+
+---
+
+### Networking
+
+* Worker pool instances can connect to a VPC
+* Each instance gets an internal IP address
+
+---
+
+## Summary
+
+Cloud Run provides flexible deployment options:
+
+* Deploy containers, source code, or functions
+* Use services for HTTP workloads
+* Use jobs for batch processing
+* Use worker pools for continuous background processing
+
+Core concepts include:
+
+* Revisions (immutable deployments)
+* Instances (scaled execution units)
+* Tasks (units of work in jobs)

@@ -1,0 +1,60 @@
+# Cloud Run Networking Configuration
+
+## 1. VPC Egress Configuration
+- Use Direct VPC egress (recommended)
+- Prefer: --vpc-egress=all-traffic when routing everything through VPC
+- Alternative: --vpc-egress=private-ranges-only for Google APIs only
+
+## 2. Execution Environment
+- Use second generation execution environment for better networking performance
+
+## 3. IP Address Strategy
+- Monitor IP usage using:
+  run.googleapis.com/container/instance_count * 2
+- Prefer non-RFC 1918 ranges when scaling:
+  - Recommended: 100.64.0.0/10 (RFC 6598)
+  - Alternative: 240.0.0.0/4 (Class E)
+
+## 4. NAT (Static IP requirement)
+If static outbound IP is needed:
+- Configure Cloud NAT
+- Reserve static external IP
+- Route Cloud Run traffic through VPC + NAT
+
+## 5. Private Google Access
+- Enable for subnets when accessing Google APIs privately
+- Required for private-only routing scenarios
+
+## 6. Connection Best Practices
+- Use connection pooling
+- Reuse connections to avoid port exhaustion
+
+## 7. Ingress Settings (Security)
+Choose based on access needs:
+- internal (most restrictive)
+- internal-and-cloud-load-balancing (recommended for LB access)
+- all (public access)
+
+## 8. Private Networking Options
+- Private Service Connect for internal IP access
+- Internal Application Load Balancer for controlled access
+- VPC Service Controls for perimeter security
+
+## 9. Performance Best Practices
+- Co-locate Cloud Run with databases (same region)
+- Use Cloud CDN for static content
+- Monitor outbound internet traffic (egress costs)
+
+## 10. DNS (if using VPC Service Controls)
+- Map:
+  *.googleapis.com → restricted.googleapis.com (199.36.153.4/30)
+  *.run.app → restricted.googleapis.com
+
+## 11. Security Controls
+- Use IAM authentication alongside ingress restrictions
+- Apply org policies:
+  - run.allowedIngress = internal or internal-and-cloud-load-balancing
+  - run.allowedVPCEgress = all-traffic
+
+## 12. Avoid
+- Do NOT change MTU from default (1460 bytes)

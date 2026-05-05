@@ -1,0 +1,77 @@
+IAM Model Overview
+
+Cloud Run uses Identity and Access Management (IAM) to control:
+
+service creation and updates
+deployment permissions
+invocation access
+runtime identity of containers
+
+Cloud Run does not use traditional network-level auth as the primary control—IAM is the main security boundary.
+
+Service-Level IAM vs Project-Level IAM
+IAM can be set at:
+project level (applies to all services)
+service level (fine-grained control)
+Service-level IAM overrides project-wide assumptions for access control
+Core Roles (Detailed Behavior)
+roles/run.admin
+Full administrative control over Cloud Run resources
+Can:
+create/update/delete services and jobs
+manage IAM policies on Cloud Run resources
+Should be restricted to platform operators only
+roles/run.developer
+Can deploy and modify services and jobs
+Cannot:
+change IAM policies
+grant access to others
+Typical CI/CD role
+roles/run.invoker
+Grants permission to invoke a Cloud Run service
+Required for:
+external HTTP access
+service-to-service calls
+Pub/Sub / Eventarc triggers (when IAM-based auth is used)
+
+Important:
+
+Without this role, requests are rejected even if network access exists
+roles/run.viewer
+Read-only access
+Can list and inspect services
+Cannot deploy or invoke
+Invocation Authentication Flow
+
+When a request hits Cloud Run:
+
+Request arrives via URL / load balancer / internal VPC
+If IAM is enforced:
+identity token is checked
+caller must have run.invoker
+If missing:
+request returns 403 Forbidden
+Service Account Identity (Runtime IAM)
+
+Each Cloud Run service runs as a service account identity:
+
+Default: Compute Engine default service account
+Recommended: custom service account per service
+
+Runtime permissions determine:
+
+access to Cloud Storage
+access to Secret Manager
+access to Pub/Sub, BigQuery, etc.
+Least Privilege Model
+
+Best practice:
+
+separate:
+deploy identity (CI/CD)
+runtime identity (service account)
+invocation identity (users/services)
+
+Avoid using:
+
+default compute service account in production

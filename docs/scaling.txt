@@ -1,0 +1,103 @@
+Scaling Overview
+
+Cloud Run automatically scales horizontally per request load, not CPU reservation.
+
+Key property:
+
+fully stateless scaling model
+scale-to-zero supported
+Instance Lifecycle Model
+
+Each Cloud Run instance:
+
+runs a container copy
+handles multiple concurrent requests
+is created or destroyed dynamically
+
+Lifecycle:
+
+idle → no instances
+request arrives → cold start instance
+traffic increases → more instances created
+traffic drops → instances terminated
+Concurrency Model
+
+Each instance has a concurrency limit:
+
+default: multiple requests per instance
+configurable per service
+
+If concurrency limit reached:
+
+Cloud Run creates new instance
+Scale-to-Zero Behavior
+If no traffic:
+all instances are terminated
+next request triggers:
+cold start
+
+Cold start affected by:
+
+container size
+initialization logic
+runtime environment
+Min Instances vs Cold Start Tradeoff
+Min Instances
+keeps instances warm
+reduces latency
+increases cost
+Scale-to-zero
+zero cost idle
+higher cold start latency
+Execution Environment Impact
+
+Cloud Run supports execution environments:
+
+first generation
+second generation (recommended for networking-heavy workloads)
+
+Second gen improves:
+
+networking throughput
+packet handling under load
+stability during scaling spikes
+Networking & Scaling Interaction
+
+Scaling impacts networking:
+
+each instance may consume:
+IPs (Direct VPC egress)
+ports (ephemeral NAT ports)
+high scale workloads risk:
+IP exhaustion
+port exhaustion
+
+Mitigations:
+
+connection pooling
+reuse HTTP connections
+use NAT carefully
+Traffic Distribution Model
+requests are load balanced across instances
+no sticky sessions by default
+each request is independent
+Scaling Triggers
+
+Cloud Run scales based on:
+
+request rate
+instance concurrency
+CPU utilization (in some configurations)
+Performance Optimization
+
+Recommended:
+
+reuse connections (HTTP keep-alive)
+avoid per-request heavy initialization
+minimize cold start overhead
+use min instances for latency-sensitive apps
+Key Design Principle
+
+Cloud Run scaling is:
+
+event-driven + request-driven + stateless

@@ -1,0 +1,385 @@
+Setting up your environment
+
+Cloud Run requires a properly configured Google Cloud environment before deployment.
+
+Sign in and project setup
+Sign in to Google Cloud
+Select or create a project in the console
+Ensure billing is enabled
+Enable required APIs
+
+Enable the following APIs:
+
+Cloud Run Admin API
+Cloud Build API
+Artifact Registry API
+Cloud Logging API
+Install and initialize gcloud CLI
+gcloud components update
+gcloud init
+Set default configuration (optional)
+gcloud config set project PROJECT_ID
+gcloud config set run/region REGION
+Configure Docker (optional)
+gcloud auth configure-docker LOCATION-docker.pkg.dev
+
+Use this when:
+
+Building containers locally
+Pushing images to Artifact Registry
+Optional development tools
+
+You can use Cloud Code with:
+
+IntelliJ
+VS Code
+Cloud Shell
+Developing your service
+
+Cloud Run services must follow specific runtime rules.
+
+Code requirements
+
+Your service must:
+
+Listen on the PORT environment variable
+Be stateless
+Not depend on local persistent storage
+Support concurrent requests
+Background processing rules
+
+If your service runs background tasks:
+
+Must use instance-based billing
+Otherwise CPU may not be allocated outside request handling
+File system limitations
+NFS support requires second-generation execution environment
+Programming language support
+
+Cloud Run supports multiple ways to run applications:
+
+Supported via buildpacks
+Node.js
+Python
+Go
+Java
+Custom support
+Any language works if packaged as an OCI-compliant container
+Using a web server
+
+You can use standard web frameworks:
+
+Node.js → Express
+Python → Flask
+Ruby → Sinatra
+
+The server must listen on PORT.
+
+Containerizing your code
+Dockerfile
+
+A Dockerfile defines how your container is built.
+
+Key points:
+
+Starts from a base image (FROM node, FROM golang, etc.)
+Installs dependencies
+Runs on Linux x86_64 ABI
+
+Example system package installation:
+
+RUN apt-get update -y && apt-get install -y \
+  graphviz \
+  && apt-get clean
+Buildpacks
+
+Instead of Dockerfiles:
+
+Cloud Run can build automatically from source
+No manual container setup required
+
+Use this when:
+
+You want simpler deployments
+You use supported runtimes
+Connecting to Google Cloud services
+
+Cloud Run uses Application Default Credentials (ADC).
+
+Key points:
+
+Use client libraries for services
+Assign minimal IAM roles to service accounts
+Permissions are automatically picked up at runtime
+Recommended Google Cloud services
+Build & deployment
+Cloud Build → build containers
+Artifact Registry → store images
+Cloud Deploy → CI/CD pipelines
+Cloud Logging → logs & monitoring
+Data storage
+Firestore → NoSQL database
+Cloud SQL → relational database
+Cloud Storage → object storage
+BigQuery → analytics warehouse
+Memorystore → in-memory cache
+Secret Manager → secure secrets
+Orchestration
+Pub/Sub → event messaging
+Cloud Scheduler → scheduled triggers
+Cloud Tasks → async job execution
+Workflows → service orchestration
+Networking & security
+Virtual Private Cloud (VPC)
+Load Balancers (internal/external)
+Cloud Armor → security protection
+Identity-Aware Proxy (IAP)
+Cloud CDN → content delivery
+Container workflow
+
+Typical deployment flow:
+
+Build container image
+Push to Artifact Registry
+Deploy to Cloud Run
+
+Example build:
+
+gcloud builds submit --tag REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE
+
+Example deploy:
+
+gcloud run deploy SERVICE_NAME \
+  --image REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE
+Key constraints summary
+
+Cloud Run services must:
+
+Be stateless
+Listen on PORT
+Be containerized or buildpack-compatible
+Support scaling and concurrency
+
+Cloud Run Functions Overview
+
+This guide provides an introductory overview of how other Google Cloud services are involved in the Cloud Run functions deployment process.
+
+Before You Begin
+
+Familiarize yourself with Cloud Run functions and source deployment concepts from the Cloud Run deployment options and resource model guide.
+
+Architecture Overview
+
+When you deploy your function's source code to Cloud Run functions:
+
+Your source code is stored in a Cloud Storage bucket.
+Cloud Build automatically builds it into a container image.
+The container image is pushed to Artifact Registry.
+Cloud Run functions pulls this image when executing your function.
+Deployment Flow
+Source Code → Cloud Storage Bucket
+Cloud Build → Container Image
+Artifact Registry → Image Storage
+Cloud Run → Runs the Service
+API-Based Behavior
+If using Cloud Run Admin API (Recommended)
+Source code uploaded to Cloud Storage bucket (no retention period)
+Bucket name format:
+Default encryption:
+run-sources-PROJECT_ID-REGION
+CMEK encryption: user-provided bucket name
+Cloud Build:
+Uses buildpacks + Functions Framework
+Creates container image
+Uses e2-standard-2 machine type
+
+Image stored in:
+
+REGION-docker.pkg.dev/PROJECT_ID/cloud-run-source-deploy
+Image deployed to Cloud Run as a service
+Trigger options:
+Eventarc
+Pub/Sub
+HTTP triggers
+If using Cloud Functions API (v2)
+Source uploaded to Cloud Storage bucket:
+
+Default encryption:
+
+gcf-v2-sources-PROJECT_NUMBER-REGION
+
+CMEK encryption:
+
+gcf-sources-PROJECT_NUMBER-REGION-CMEK_KEY_HASH
+Cloud Build:
+Uses buildpacks + Functions Framework
+Uses e2-standard-2
+
+Image stored in:
+
+REGION-docker.pkg.dev/PROJECT_ID/gcf-artifacts
+Deployed to Cloud Run as a service
+Trigger options:
+Eventarc
+Pub/Sub
+HTTP triggers
+Compare Cloud Run Functions
+Overview
+
+There are two versions:
+
+Cloud Run Functions (Latest)
+Built on Cloud Run services
+Created using:
+Cloud Run Admin API (recommended)
+Cloud Functions v2 API
+Cloud Run Functions (1st Gen)
+Original Cloud Functions system
+Limited triggers and configurability
+Runs on Google internal infrastructure
+Concepts Comparison
+Resource Model
+Latest: Function = Cloud Run service from source code
+1st Gen: Function deployed directly from source
+Function Types
+Latest:
+HTTP functions
+CloudEvents (event-driven)
+1st Gen:
+HTTP functions
+Limited event-driven support (runtime dependent)
+Image Registry
+Latest: Artifact Registry only
+1st Gen: Artifact Registry or Container Registry (deprecated)
+Pricing
+Latest: Cloud Run pricing
+1st Gen: Legacy pricing model
+Configuration Differences
+Feature	Cloud Run Functions	1st Gen
+Timeout	Up to 60 min (HTTP), 9 min (events via v2)	9 min
+Memory	Up to 16 GiB	Up to 8 GiB
+CPU	Up to 4 vCPU	Up to 2 vCPU
+Concurrency	Up to 1000 requests	1 request
+Traffic splitting	Supported	Not supported
+Deployment Options
+Cloud Run Admin API
+gcloud run deploy
+Cloud Console
+REST API (run.googleapis.com)
+Terraform (google_cloud_run_v2_service)
+Cloud Functions API
+gcloud functions deploy
+REST API (cloudfunctions.googleapis.com)
+Terraform (google_cloudfunctions2_function)
+Triggers and Retries
+Latest Version
+Triggers configured via Eventarc (or deploy-time)
+Supports 90+ event types
+Retries:
+Eventarc retry policy
+Pub/Sub dead-letter topics
+--retry flag (v2 API)
+1st Gen
+Triggers defined during deployment
+Limited event sources
+Retries via --retry
+Write Cloud Run Functions
+Functions Framework Overview
+
+Cloud Run functions use the Functions Framework:
+
+It allows you to:
+
+Run HTTP functions
+Handle CloudEvents
+Test locally
+Function Structure
+
+A function requires:
+
+1. Entry Point
+
+This is the function that executes when triggered.
+
+2. Signature Type
+HTTP function
+Event-driven (CloudEvent)
+Source Directory Structure (Node.js Example)
+.
+├── index.js
+└── package.json
+package.json Example
+{
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.0.0"
+  },
+  "type": "module"
+}
+HTTP Function Example (Node.js)
+import { http } from '@google-cloud/functions-framework';
+
+http('myHttpFunction', (req, res) => {
+  res.send('OK');
+});
+Event-Driven Function Example
+import { cloudEvent } from "@google-cloud/functions-framework";
+
+cloudEvent('myCloudEventFunction', event => {
+  console.log(event.data);
+});
+Local Development
+Install Functions Framework
+npm install --save-dev @google-cloud/functions-framework
+Run Locally
+npm start
+Test Locally
+HTTP Function
+http://localhost:8080
+Event Function (Pub/Sub Example)
+curl localhost:8080 \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -H "ce-type: google.cloud.pubsub.topic.v1.messagePublished" \
+  -d '{
+    "message": {
+      "data": "d29ybGQ="
+    }
+  }'
+Function Triggers
+Types of Triggers
+Event-Driven Triggers
+Pub/Sub
+Cloud Storage
+Firestore
+Audit Logs (Eventarc)
+HTTP Triggers
+HTTP requests
+Cloud Scheduler
+Workflows
+Cloud Tasks
+Pub/Sub push subscriptions
+Trigger Notes
+A function can only have one trigger
+Multiple functions can share same trigger
+Eventarc used for all event-driven triggers
+Trigger activation may take minutes
+Test Cloud Run Locally (Docker)
+PORT=8080 && docker run -p 9090:${PORT} -e PORT=${PORT} IMAGE_URL
+Access Local App
+http://localhost:9090
+Summary
+
+Cloud Run functions are built using:
+
+Cloud Storage (source upload)
+Cloud Build (container build)
+Artifact Registry (image storage)
+Cloud Run (execution)
+
+Deployment methods:
+
+Cloud Run Admin API (recommended)
+Cloud Functions v2 API (legacy compatibility)
+CLI (gcloud run deploy)
+Event-driven triggers via Eventarc
