@@ -16,15 +16,25 @@ def get_embedding(text: str):
     return response.embeddings[0].values
 
 
-def retrieve_chunks(question: str, k=5):
-    query_embedding = get_embedding(question)
-
+def retrieve_chunks(query, k=5):
     results = collection.query(
-        query_embeddings=[query_embedding],
+        query_embeddings=[get_embedding(query)],
         n_results=k
     )
 
-    return results["documents"][0], results["metadatas"][0]
+    docs = results["documents"][0]
+    metas = results["metadatas"][0]
+    distances = results["distances"][0]
+
+    filtered_docs = []
+    filtered_metas = []
+
+    for doc, meta, dist in zip(docs, metas, distances):
+        if dist < 1.2:  # similarity filter
+            filtered_docs.append(doc)
+            filtered_metas.append(meta)
+
+    return filtered_docs, filtered_metas
 
 
 def ask(question: str):

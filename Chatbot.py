@@ -38,26 +38,42 @@ def call_gemini(prompt: str) -> str:
 def respond(message, history):
     docs, metas = retrieve_chunks(message)
 
-    # if nothing retrieved, still answer safely
-    context = "\n\n".join(docs) if docs else "No relevant Cloud Run docs found."
+    if not docs:
+        context = "No relevant Cloud Run docs found."
+        sources = []
+    else:
+        context = "\n\n".join(docs)
+
+        sources = [
+            f"{m['source']} (chunk {m['chunk_id']})"
+            for m in metas
+        ]
 
     prompt = f"""
 You are a Cloud Run documentation assistant.
 
 RULES:
 - Only use the context below
-- If answer is not in context, say:
+- If not found say:
   "I don't have information on that in the Cloud Run docs."
-- Be concise and correct
+- Do NOT guess
 
-CONTEXT:
+Context:
 {context}
 
-USER QUESTION:
+Question:
 {message}
 """
 
-    return call_gemini(prompt)
+    response = client.models.generate_content(
+        model="gemini-2.5-flash-lite",
+        contents=prompt
+    ).text
+
+    if sources:
+        response += "\n\nSources:\n" + "\n".join(sources)
+
+    return response
 
 
 demo = gr.ChatInterface(fn=respond)
