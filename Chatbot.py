@@ -3,11 +3,20 @@ import time
 import gradio as gr
 from google import genai
 from google.genai.errors import ServerError
+from ingestion import embed_and_store
+import chromadb
 
 from rag_query import retrieve_chunks
 
 # API client (Cloud Run uses Secret Manager env var)
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+collection = chroma_client.get_or_create_collection(name="cloudrun_docs")
+
+# auto-ingest docs if database is empty
+if collection.count() == 0:
+    print("No embeddings found. Running ingestion pipeline...")
+    embed_and_store()
 
 
 def call_gemini(prompt: str) -> str:
@@ -65,10 +74,7 @@ Question:
 {message}
 """
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents=prompt
-    ).text
+    response = call_gemini(prompt)
 
     if sources:
         response += "\n\nSources:\n" + "\n".join(sources)
