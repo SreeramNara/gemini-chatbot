@@ -2,6 +2,7 @@ import os
 import uuid
 from google import genai
 import chromadb
+from pypdf import PdfReader
 
 DOCS_FOLDER = "docs"
 
@@ -20,17 +21,44 @@ def get_embedding(text: str):
     return response.embeddings[0].values
 
 
+def extract_text(path):
+    ext = os.path.splitext(path)[1].lower()
+
+    # TXT + MD
+    if ext in [".txt", ".md"]:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+
+    # PDF
+    elif ext == ".pdf":
+        reader = PdfReader(path)
+
+        text = ""
+
+        for page in reader.pages:
+            extracted = page.extract_text()
+
+            if extracted:
+                text += extracted + "\n"
+
+        return text
+
+    return None
+
+
 def load_documents():
     docs = []
 
     for filename in os.listdir(DOCS_FOLDER):
-        if not filename.endswith(".txt"):
-            continue
-
         path = os.path.join(DOCS_FOLDER, filename)
 
-        with open(path, "r", encoding="utf-8") as f:
-            content = f.read()
+        if not os.path.isfile(path):
+            continue
+
+        content = extract_text(path)
+
+        if not content:
+            continue
 
         chunks = content.split("\n---\n")
 
