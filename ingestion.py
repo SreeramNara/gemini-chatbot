@@ -45,6 +45,20 @@ def extract_text(path):
 
     return None
 
+def chunk_text(text, chunk_size=1500, overlap=200):
+    chunks = []
+
+    start = 0
+
+    while start < len(text):
+        end = start + chunk_size
+
+        chunk = text[start:end]
+        chunks.append(chunk)
+
+        start += chunk_size - overlap
+
+    return chunks
 
 def load_documents():
     docs = []
@@ -60,7 +74,7 @@ def load_documents():
         if not content:
             continue
 
-        chunks = content.split("\n---\n")
+        chunks = chunk_text(content)
 
         for i, chunk in enumerate(chunks):
             chunk = chunk.strip()
@@ -78,10 +92,10 @@ def load_documents():
 
 
 def embed_and_store():
-    if collection.count() > 0:
-        print("Embeddings already exist.")
-        return
-    
+    print("Clearing old embeddings...")
+
+    collection.delete(where={})
+
     docs = load_documents()
 
     print(f"Loaded {len(docs)} chunks")
