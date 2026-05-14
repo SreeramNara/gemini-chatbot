@@ -3,20 +3,18 @@ import time
 import gradio as gr
 from google import genai
 from google.genai.errors import ServerError
-from ingestion import embed_and_store
 import chromadb
 
 from rag_query import retrieve_chunks
+from ingestion import embed_and_store
 
-# API client (Cloud Run uses Secret Manager env var)
+
+# Gemini client
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+# Chroma DB (shared)
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
 collection = chroma_client.get_or_create_collection(name="cloudrun_docs")
-
-# auto-ingest docs if database is empty
-if collection.count() == 0:
-    print("No embeddings found. Running ingestion pipeline...")
-    embed_and_store()
 
 
 def call_gemini(prompt: str) -> str:
@@ -35,10 +33,9 @@ def call_gemini(prompt: str) -> str:
                 return response.text
 
             except ServerError:
-                time.sleep(2 ** attempt)  # exponential backoff
+                time.sleep(2 ** attempt)
 
             except Exception:
-                # unknown error → try next model
                 break
 
     return "Model is temporarily unavailable. Please try again."
@@ -47,14 +44,15 @@ def call_gemini(prompt: str) -> str:
 def respond(message, history):
     docs, metas = retrieve_chunks(message)
 
+    # If nothing retrieved
     if not docs:
-        context = "No relevant Cloud Run docs found."
+        context = "No relevant Cloud Run documentation found."
         sources = []
     else:
         context = "\n\n".join(docs)
 
         sources = [
-            f"{m['source']} (chunk {m['chunk_id']})"
+            f"{m.get('source', 'unknown')} (chunk {m.get('chunk_id', '?')})"
             for m in metas
         ]
 
@@ -62,8 +60,8 @@ def respond(message, history):
 You are a Cloud Run documentation assistant.
 
 RULES:
-- Only use the context below
-- If not found say:
+- Only use the provided context
+- If the answer is not in the context, say:
   "I don't have information on that in the Cloud Run docs."
 - Do NOT guess
 
@@ -82,9 +80,14 @@ Question:
     return response
 
 
+# UI
 demo = gr.ChatInterface(fn=respond)
 
 demo.launch(
     server_name="0.0.0.0",
     server_port=int(os.environ.get("PORT", 8080))
 )
+
+
+if __name__ == "__main__":
+    embed_and_store()

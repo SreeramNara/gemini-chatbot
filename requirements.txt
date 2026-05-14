@@ -3,3 +3,6 @@ chromadb
 gradio
 numpy
 pypdf
+fastapi
+uvicorn
+python-dotenv

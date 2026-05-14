@@ -2,10 +2,12 @@ import os
 from google import genai
 import chromadb
 
+# Embedding client
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+# Chroma DB
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
-collection = chroma_client.get_collection(name="cloudrun_docs")
+collection = chroma_client.get_or_create_collection(name="cloudrun_docs")
 
 
 def get_embedding(text: str):
@@ -15,59 +17,39 @@ def get_embedding(text: str):
     )
     return response.embeddings[0].values
 
-
-def retrieve_chunks(query, k=5):
+def debug_retrieval(query: str, k=10):
     results = collection.query(
         query_embeddings=[get_embedding(query)],
         n_results=k
     )
 
-    docs = results["documents"][0]
-    metas = results["metadatas"][0]
-    distances = results["distances"][0]
+    print("\n================ DEBUG RETRIEVAL ================")
 
-    filtered_docs = []
-    filtered_metas = []
+    for i, (doc, meta, dist) in enumerate(zip(
+        results["documents"][0],
+        results["metadatas"][0],
+        results["distances"][0]
+    )):
+        print(f"\n[{i}] SOURCE: {meta['source']} | chunk {meta['chunk_id']}")
+        print(f"DISTANCE: {dist}")
+        print(f"TEXT PREVIEW: {doc[:200]}")
 
-    for doc, meta, dist in zip(docs, metas, distances):
-        if dist < 1.2:  # similarity filter
-            filtered_docs.append(doc)
-            filtered_metas.append(meta)
+    print("==================================================\n")
 
-    return filtered_docs, filtered_metas
+    return results
 
+def retrieve_chunks(query, k=5):
+    query_embedding = get_embedding(query)
 
-def ask(question: str):
-    docs, metas = retrieve_chunks(question)
-
-    context = "\n\n".join(
-        f"[Source: {m['source']}]\n{d}"
-        for d, m in zip(docs, metas)
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=k
     )
 
-    prompt = f"""
-You are a Cloud Run documentation assistant.
+    docs = results["documents"][0] if results["documents"] else []
+    metas = results["metadatas"][0] if results["metadatas"] else []
 
-RULES:
-- Only use the context below
-- If answer is not in context, say: "I don't have information on that in the Cloud Run docs."
+    # DEBUG (important while fixing)
+    print("\n[DEBUG] Retrieved docs:", len(docs))
 
-Context:
-{context}
-
-Question:
-{question}
-"""
-
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents=prompt
-    )
-
-    return response.text
-
-
-if __name__ == "__main__":
-    while True:
-        q = input("\nAsk a Cloud Run question: ")
-        print("\n" + ask(q))
+    return docs, metas
