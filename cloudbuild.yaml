@@ -36,3 +36,6 @@ steps:
 
 images:
   - "gcr.io/$PROJECT_ID/rag-backend"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
