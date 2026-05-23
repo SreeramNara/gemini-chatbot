@@ -3,6 +3,7 @@ import uuid
 from google import genai
 import chromadb
 from pypdf import PdfReader
+import hashlib
 
 
 DOCS_FOLDER = "docs"
@@ -24,6 +25,14 @@ def get_embedding(text: str):
     )
     return response.embeddings[0].values
 
+def get_file_hash(path):
+    hasher = hashlib.md5()
+
+    with open(path, "rb") as f:
+        while chunk := f.read(8192):
+            hasher.update(chunk)
+
+    return hasher.hexdigest()
 
 def extract_text(path):
     ext = os.path.splitext(path)[1].lower()
@@ -112,38 +121,109 @@ def load_documents():
 
 
 def embed_and_store():
-    print("Clearing old embeddings...")
-    collection.delete(ids=collection.get()["ids"])
-
     docs = load_documents()
 
     print(f"Loaded {len(docs)} chunks")
 
-    if len(docs) == 0:
-        print("WARNING: No documents found. Check docs folder.")
-        return
+    existing = collection.get()
+
+    existing_ids = set()
+
+    if existing["metadatas"]:
+        for meta in existing["metadatas"]:
+            source = meta["source"]
+            chunk_id = meta["chunk_id"]
+
+            existing_ids.add(f"{source}_{chunk_id}")
+
+    added = 0
+    skipped = 0
 
     for doc in docs:
-        text = doc["text"]
+        unique_id = f"{doc['source']}_{doc['chunk_id']}"
 
-        embedding = get_embedding(text)
+        if unique_id in existing_ids:
+            skipped += 1
+            continue
+
+        embedding = get_embedding(doc["text"])
 
         collection.add(
             ids=[str(uuid.uuid4())],
             embeddings=[embedding],
-            documents=[text],
+            documents=[doc["text"]],
             metadatas=[{
                 "source": doc["source"],
                 "chunk_id": doc["chunk_id"]
             }]
         )
 
-    print("Done embedding and storing!")
+        added += 1
+
+    print(f"Added {added} new chunks")
+    print(f"Skipped {skipped} existing chunks")
 
     return {
-        "chunks_loaded": len(docs)
+        "chunks_loaded": len(docs),
+        "new_chunks_added": added,
+        "existing_chunks_skipped": skipped
     }
 
+def ingest_single_file(path, original_filename):
+    file_hash = get_file_hash(path)
 
-if __name__ == "__main__":
-    embed_and_store()
+    existing = collection.get(where={"source": original_filename})
+
+    metadatas = existing.get("metadatas") or []
+
+    # Extract ALL hashes from existing chunks
+    existing_hashes = {
+        meta.get("file_hash")
+        for meta in metadatas
+        if meta.get("file_hash")
+    }
+
+    # If file exists AND hash matches → skip
+    if file_hash in existing_hashes and len(existing_hashes) == 1:
+        return {
+            "message": "File already exists unchanged",
+            "new_chunks_added": 0
+        }
+
+    # Always delete old version before re-ingest
+    collection.delete(where={"source": original_filename})
+
+    content = extract_text(path)
+
+    if not content:
+        raise Exception("Could not extract text from file")
+
+    chunks = chunk_text(content)
+
+    added = 0
+
+    for i, chunk in enumerate(chunks):
+        chunk = chunk.strip()
+
+        if len(chunk) < 50:
+            continue
+
+        embedding = get_embedding(chunk)
+
+        collection.add(
+            ids=[str(uuid.uuid4())],
+            embeddings=[embedding],
+            documents=[chunk],
+            metadatas=[{
+                "source": original_filename,
+                "chunk_id": i,
+                "file_hash": file_hash
+            }]
+        )
+
+        added += 1
+
+    return {
+        "message": "File re-ingested successfully",
+        "new_chunks_added": added
+    }

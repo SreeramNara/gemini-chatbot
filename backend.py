@@ -1,29 +1,52 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 import traceback
 import logging
+import tempfile
+import shutil
+import os
+import time
 
-from rag_query import retrieve_chunks, debug_retrieval
-from ingestion import embed_and_store
+from ingestion import ingest_single_file
+from rag_query import debug_retrieval
+from fastapi.middleware.cors import CORSMiddleware
+from google import genai
+from google.genai.errors import ServerError
 
-# logging
+# --------------------
+# LOGGING
+# --------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# --------------------
+# CORS (PRODUCTION FIX)
+# --------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --------------------
+# GEMINI CLIENT (GLOBAL FIX)
+# --------------------
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 class QueryRequest(BaseModel):
     message: str
 
-
+# --------------------
+# GEMINI CALL
+# --------------------
 def call_gemini(prompt: str):
-    from google import genai
-    import os, time
-    from google.genai.errors import ServerError
-
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-
     models = ["gemini-2.5-flash-lite", "gemini-1.5-flash"]
 
     for model in models:
@@ -43,11 +66,16 @@ def call_gemini(prompt: str):
 
     return "Model unavailable"
 
+# --------------------
+# HEALTH
+# --------------------
 @app.get("/")
 def health():
     return {"status": "ok"}
 
-
+# --------------------
+# CHAT ENDPOINT
+# --------------------
 @app.post("/chat")
 def chat(req: QueryRequest):
     try:
@@ -55,11 +83,11 @@ def chat(req: QueryRequest):
 
         results = debug_retrieval(message)
 
-        docs = results["documents"][0]
-        metas = results["metadatas"][0]
+        docs = results.get("documents", [[]])[0]
+        metas = results.get("metadatas", [[]])[0]
 
         if not docs:
-            context = "No relevant Cloud Run documentation found."
+            context = "No relevant documentation found."
             sources = []
         else:
             context = "\n\n".join(docs)
@@ -70,7 +98,7 @@ def chat(req: QueryRequest):
             ]
 
         prompt = f"""
-You are a Cloud Run documentation assistant.
+You are a documentation assistant.
 
 RULES:
 - Only use context below
@@ -86,32 +114,41 @@ Question:
         response = call_gemini(prompt)
 
         return {
-            "answer": response,
+            "response": response,   # 🔥 FIXED (frontend now reliable)
             "sources": sources
         }
 
     except Exception as e:
         logger.error(traceback.format_exc())
         return {
-            "error": str(e),
-            "answer": "Internal server error"
+            "response": "Internal server error",
+            "error": str(e)
         }
-    
-    
+
+# --------------------
+# INGEST ENDPOINT
+# --------------------
 @app.post("/ingest")
-def ingest():
+async def ingest(file: UploadFile = File(...)):
     try:
-        stats = embed_and_store()
+        suffix = os.path.splitext(file.filename)[1]
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            shutil.copyfileobj(file.file, temp_file)
+            temp_path = temp_file.name
+
+        stats = ingest_single_file(temp_path, file.filename)
+
+        os.remove(temp_path)
 
         return {
             "status": "success",
-            "message": "Documents ingested successfully",
+            "filename": file.filename,
             "stats": stats
         }
 
     except Exception as e:
         logger.error(traceback.format_exc())
-
         return {
             "status": "error",
             "message": str(e)

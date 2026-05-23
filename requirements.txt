@@ -1,8 +1,9 @@
 google-genai
 chromadb
-gradio
 numpy
 pypdf
 fastapi
-uvicorn
+uvicorn[standard]
 python-dotenv
+python-multipart
+httpx
