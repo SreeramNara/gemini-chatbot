@@ -4,14 +4,14 @@ steps:
     args:
       - "build"
       - "-t"
-      - "gcr.io/$PROJECT_ID/rag-backend"
+      - "us-central1-docker.pkg.dev/gemini-chatbot-494821/rag-backend/rag-backend"
       - "."
 
   # push container
   - name: "gcr.io/cloud-builders/docker"
     args:
       - "push"
-      - "gcr.io/$PROJECT_ID/rag-backend"
+      - "us-central1-docker.pkg.dev/gemini-chatbot-494821/rag-backend/rag-backend"
 
   # deploy to Cloud Run
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -21,7 +21,7 @@ steps:
       - "deploy"
       - "rag-backend"
       - "--image"
-      - "gcr.io/$PROJECT_ID/rag-backend"
+      - "us-central1-docker.pkg.dev/gemini-chatbot-494821/rag-backend/rag-backend"
       - "--region"
       - "us-central1"
       - "--platform"
@@ -35,7 +35,7 @@ steps:
       - "--max-instances=2"
 
 images:
-  - "gcr.io/$PROJECT_ID/rag-backend"
+  - "us-central1-docker.pkg.dev/gemini-chatbot-494821/rag-backend/rag-backend"
 
 options:
   logging: CLOUD_LOGGING_ONLY
